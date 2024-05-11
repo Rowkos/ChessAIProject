@@ -315,6 +315,15 @@ class Board:
             if origin[0] - target[0] == -2:
                 self.board_state[(target[0] + 1, target[1])] = 0
                 self.board_state[(origin[0] + 1, origin[1])] = self.get_piece_id("rook", suit_of_piece_on_origin)
-            if origin[0] - target[0] == 2:
+            elif origin[0] - target[0] == 2:
                 self.board_state[(target[0] - 2, target[1])] = 0
                 self.board_state[(origin[0] - 1, origin[1])] = self.get_piece_id("rook", suit_of_piece_on_origin)
+            else:
+                self.can_castle[suit_of_piece_on_origin] = (False, False)
+        if piece_on_origin == self.get_piece_id("rook", suit_of_piece_on_origin):
+            print("true")
+            if origin[0] == 0 and (origin[1] == 0 or origin[1] == 7):
+                self.can_castle[suit_of_piece_on_origin] = (False, self.can_castle[suit_of_piece_on_origin][1])
+
+            if origin[0] == 7 and (origin[1] == 0 or origin[1] == 7):
+                self.can_castle[suit_of_piece_on_origin] = (self.can_castle[suit_of_piece_on_origin][1], False)
