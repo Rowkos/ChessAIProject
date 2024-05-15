@@ -31,8 +31,7 @@ class Board:
         self.sprites = []
         for i in range(12):
             # pawn knight bishop rook queen king
-            img = pygame.image.load(r"C:/Users/rowan/PycharmProjects/Sentence-Correctness-Analysis-v2/"
-                                    r"chess_piece_images/" + self.piece_type_names[i // 2] + "_" + self.suits[i % 2] + ".png"). \
+            img = pygame.image.load(r"pieces/" + self.suits[i % 2] + "_" + self.piece_type_names[i // 2] + ".png"). \
                 convert_alpha()
             self.sprites.append(img)
 
@@ -321,7 +320,6 @@ class Board:
             else:
                 self.can_castle[suit_of_piece_on_origin] = (False, False)
         if piece_on_origin == self.get_piece_id("rook", suit_of_piece_on_origin):
-            print("true")
             if origin[0] == 0 and (origin[1] == 0 or origin[1] == 7):
                 self.can_castle[suit_of_piece_on_origin] = (False, self.can_castle[suit_of_piece_on_origin][1])
 
