@@ -113,15 +113,15 @@ class Board:
                         moves.append(target_square)
 
             # 2 space move
-            target_square = (origin[0], origin[1] + direction_of_movement * 2)
-            if self.in_bounds(target_square):
-                if self.board_state[target_square] == 0 and ((suit_of_piece == 0 and origin[1] == 6) or
+            target_square_0 = (origin[0], origin[1] + direction_of_movement * 2)
+            if self.in_bounds(target_square_0):
+                if self.board_state[target_square_0] == 0 and self.board_state[target_square] == 0 and ((suit_of_piece == 0 and origin[1] == 6) or
                                                              (suit_of_piece == 1 and origin[1] == 1)):
                     if check_for_check:
-                        if not self.sim_board_for_check(origin, target_square):
-                            moves.append(target_square)
+                        if not self.sim_board_for_check(origin, target_square_0):
+                            moves.append(target_square_0)
                     else:
-                        moves.append(target_square)
+                        moves.append(target_square_0)
 
         # capture and en pessant
         possible_capture_squares = [(origin[0] + 1, origin[1] + direction_of_movement),
@@ -200,21 +200,37 @@ class Board:
                 moves.append((origin[0] + 2, origin[1]))
         return moves
 
-    def get_all_possible_moves_by_suit(self, suit, only_attack = False):
+    def check_if_king_adjacent(self, origin, suit_to_look_for):
+        adjacent_squares = [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)]
+        for adjacent_square in adjacent_squares:
+            square = (origin[0] + adjacent_square[0], origin[1] + adjacent_square[1])
+            if self.in_bounds(square):
+                if self.board_state[square] == self.get_piece_id("king", suit_to_look_for):
+                    return True
+        return False
+
+    def get_all_possible_moves_by_suit(self, suit, only_attack = False, return_origins = False):
         moves = []
+        origins = []
         for x in range(8):
             for y in range(8):
                 origin = (x, y)
                 piece_on_origin = self.board_state[origin]
                 if piece_on_origin != 0 and self.get_suit(piece_on_origin) == suit and self.get_piece_type(piece_on_origin) != 6:
                     moves.append(self.get_possible_moves(origin, only_attack = only_attack))
+                    origins.append(origin)
         # clean up
         moves = [g for g in moves if g != []]
         new_moves = []
-        for x in moves:
+        new_origins = []
+        for i, x in enumerate(moves):
             for y in x:
                 new_moves.append(y)
+                new_origins.append(origins[i])
         moves = new_moves
+        origins = new_origins
+        if return_origins:
+            return [moves, origins]
         return moves
 
     def king_is_in_check(self, suit_of_king):
@@ -222,7 +238,8 @@ class Board:
         king = self.board_state[king_position]
         suit_of_piece_on_origin = self.get_suit(king)
         enemy_suit = 1 if suit_of_piece_on_origin == 0 else 0
-        if king_position in self.get_all_possible_moves_by_suit(enemy_suit):
+        if (king_position in self.get_all_possible_moves_by_suit(enemy_suit) or
+                self.check_if_king_adjacent(king_position, enemy_suit)):
             return True
 
         return False
@@ -276,23 +293,38 @@ class Board:
     def is_checkmate(self, suit):
         if self.king_is_in_check(suit):
             can_escape = False
-            possible_moves = self.get_all_possible_moves_by_suit(suit) + self.get_possible_moves(self.find_piece(self.get_piece_id("king", suit)))
-
+            possible_moves = self.get_all_possible_moves_by_suit(suit, return_origins=True)
+            king_moves = self.get_possible_moves(self.find_piece(self.get_piece_id("king", suit)))
+            possible_moves[0] += king_moves
+            possible_moves[1] += [self.find_piece(self.get_piece_id("king", suit))] * len(king_moves)
             # find an empty cell
             original_board_state = copy.deepcopy(self.board_state)
-            empty_cell = 0
-            for x in range(8):
-                for y in range(8):
-                    if self.board_state[x,y] == 0:
-                        empty_cell = (x,y)
-            self.board_state[empty_cell] = suit + 1
-            for move in possible_moves:
-                if not self.sim_board_for_check(empty_cell, move):
+            for i in range(len(possible_moves[0])):
+                if not self.sim_board_for_check(possible_moves[1][i], possible_moves[0][i]):
                     can_escape = True
             self.board_state = original_board_state
             return not can_escape
         return False
 
+    def is_stalemate(self, suit):
+        if not self.king_is_in_check(suit):
+            can_escape = False
+            possible_moves = self.get_all_possible_moves_by_suit(suit, return_origins=True)
+            king_moves = self.get_possible_moves(self.find_piece(self.get_piece_id("king", suit)))
+
+            print(possible_moves)
+            possible_moves[0] += king_moves
+            possible_moves[1] += [self.find_piece(self.get_piece_id("king", suit))] * len(king_moves)
+            print(possible_moves)
+            print([self.get_piece_id("king", suit)] * len(king_moves))
+            # find an empty cell
+            original_board_state = copy.deepcopy(self.board_state)
+            for i in range(len(possible_moves[0])):
+                if not self.sim_board_for_check(possible_moves[1][i], possible_moves[0][i]):
+                    can_escape = True
+            self.board_state = original_board_state
+            return not can_escape
+        return False
     def check_for_en_pessant_opening(self, origin, target):
         suit_of_origin = self.get_suit(self.board_state[target])
         enemy_suit = 1 if suit_of_origin == 0 else 0
@@ -325,3 +357,42 @@ class Board:
 
             if origin[0] == 7 and (origin[1] == 0 or origin[1] == 7):
                 self.can_castle[suit_of_piece_on_origin] = (self.can_castle[suit_of_piece_on_origin][1], False)
+
+    def board_to_list(self, board):
+        print(board)
+        rows = str(board).split("\n")
+        return [x.split() for x in rows]
+
+    def get_moved_piece(self, prev_state, new_state):
+        origin = ()
+        target = ()
+        for x in range(8):
+            for y in range(8):
+                if prev_state[x][y] != new_state[x][y]:
+                    if new_state[x][y] == ".":
+                        # the piece left this square
+                        origin = (x, y)
+                    else:
+                        target = (x, y)
+        return origin, target
+
+    def set_board_state_from_chess_game(self, game, return_intermediates = False):
+        prev_board = self.board_to_list(game.board())
+        states = []
+        while True:
+            game = game.next()
+            board_state = self.board_to_list(game.board())
+            origin, target = self.get_moved_piece(prev_board, board_state)
+
+            if game.is_end():
+                break
+            prev_board = copy.deepcopy(board_state)
+            self.move_piece(origin, target)
+            states.append(self.board_state)
+        if return_intermediates:
+            return states
+
+    def set_board_state_from_list(self, li):
+        for x in range(8):
+            for y in range(8):
+                self.board_state[x, y] = li[x][y]

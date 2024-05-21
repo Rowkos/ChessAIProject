@@ -60,6 +60,7 @@ def draw_promotion_choice(suit):
 
 
 if __name__ == "__main__":
+    start_position = []
     board = Board(window)
     initiate_pieces()
     print(board.get_all_possible_moves_by_suit(0))
@@ -89,7 +90,10 @@ if __name__ == "__main__":
                         selected_square = None
                         turn = 1 if turn == 0 else 0
                         if board.is_checkmate(turn):
-                            print("PLAYER " + str(turn) + " WINS!")
+                            enemy_turn = 1 if turn == 0 else 0
+                            print("PLAYER " + str(enemy_turn) + " WINS!")
+                        if board.is_stalemate(turn):
+                            print("IT'S A DRAW")
 
                     if board.get_suit(board.board_state[clicked_square]) == turn:
                         selected_square = (mouse_pos[0] // 75, mouse_pos[1] // 75)
