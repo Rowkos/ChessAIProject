@@ -61,7 +61,7 @@ class SimplifiedBoard():
         for x in range(8):
             for y in range(8):
                 if self.board_state[x, y] != 0:
-                    bitboards[self.board_state[x, y] - 1] = 1
+                    bitboards[self.board_state[x, y] - 1, x, y] = 1
         return bitboards
 
 def build_eval_model():
