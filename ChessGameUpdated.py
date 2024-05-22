@@ -60,8 +60,22 @@ def draw_promotion_choice(suit):
 
 
 if __name__ == "__main__":
-    start_position = []
+    board_piece_id = {"pawn_white" : 1, "pawn_black": 2, "knight_white": 3,
+                      "knight_black": 4, "bishop_white": 5,
+                      "bishop_black": 6, "rook_white": 7, "rook_black": 8,
+                      "queen_white": 9, "queen_black": 10,
+                      "king_white": 11, "king_black": 12}
+    start_position = [[0, 0, 9, 0, 0, 6, 4, 8],
+                      [0, 0, 0, 0, 2, 0, 2, 10],
+                      [0, 0, 0, 0, 0, 2, 12, 8],
+                      [0, 0, 0, 0, 0, 0, 0, 2],
+                      [0, 0, 0, 0, 0, 0, 0, 1],
+                      [0, 0, 0, 0, 1, 0, 0, 0],
+                      [1, 1, 1, 1, 0, 1, 1, 0],
+                      [7, 3, 5, 0, 11, 5, 3, 7]]
     board = Board(window)
+    #board.set_board_state_from_list(start_position)
+    #board.reset_board()
     initiate_pieces()
     print(board.get_all_possible_moves_by_suit(0))
 
@@ -74,6 +88,9 @@ if __name__ == "__main__":
 
     while True:
         createBoard()
+        if turn == 0:
+            board.make_AI_move(turn)
+            turn = 1
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()

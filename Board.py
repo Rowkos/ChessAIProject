@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 import pygame
+import tensorflow as tf
 
 pygame.init()
 width, height = (600, 600)
@@ -21,6 +22,7 @@ def drawSquare(color, position):
 class Board:
     def __init__(self, window):
         self.window = window
+        self.model = tf.keras.models.load_model('Evaluator')
         self.board_state = np.zeros((8, 8))
         self.piece_type_names = ["pawn", "knight", "bishop", "rook", "queen", "king"]
         self.piece_to_type_dict = {"empty": 0, "pawn": 1, "knight": 2, "bishop": 3, "rook": 4, "queen": 5, "king": 6}
@@ -209,7 +211,7 @@ class Board:
                     return True
         return False
 
-    def get_all_possible_moves_by_suit(self, suit, only_attack = False, return_origins = False):
+    def get_all_possible_moves_by_suit(self, suit, only_attack = False, return_origins = False, check_for_check = False, test_flag = False):
         moves = []
         origins = []
         for x in range(8):
@@ -217,16 +219,18 @@ class Board:
                 origin = (x, y)
                 piece_on_origin = self.board_state[origin]
                 if piece_on_origin != 0 and self.get_suit(piece_on_origin) == suit and self.get_piece_type(piece_on_origin) != 6:
-                    moves.append(self.get_possible_moves(origin, only_attack = only_attack))
-                    origins.append(origin)
+                    possible_moves = self.get_possible_moves(origin, only_attack = only_attack, check_for_check = check_for_check)
+                    moves.append(possible_moves)
+                    origins.append([origin] * len([x for x in possible_moves if x != []]))
         # clean up
         moves = [g for g in moves if g != []]
+        origins = [g for g in origins if g != []]
         new_moves = []
         new_origins = []
         for i, x in enumerate(moves):
-            for y in x:
+            for j, y in enumerate(x):
                 new_moves.append(y)
-                new_origins.append(origins[i])
+                new_origins.append(origins[i][j])
         moves = new_moves
         origins = new_origins
         if return_origins:
@@ -309,16 +313,14 @@ class Board:
     def is_stalemate(self, suit):
         if not self.king_is_in_check(suit):
             can_escape = False
-            possible_moves = self.get_all_possible_moves_by_suit(suit, return_origins=True)
+            possible_moves = self.get_all_possible_moves_by_suit(suit, return_origins=True, test_flag = True)
             king_moves = self.get_possible_moves(self.find_piece(self.get_piece_id("king", suit)))
 
-            print(possible_moves)
             possible_moves[0] += king_moves
             possible_moves[1] += [self.find_piece(self.get_piece_id("king", suit))] * len(king_moves)
-            print(possible_moves)
-            print([self.get_piece_id("king", suit)] * len(king_moves))
             # find an empty cell
             original_board_state = copy.deepcopy(self.board_state)
+
             for i in range(len(possible_moves[0])):
                 if not self.sim_board_for_check(possible_moves[1][i], possible_moves[0][i]):
                     can_escape = True
@@ -359,7 +361,6 @@ class Board:
                 self.can_castle[suit_of_piece_on_origin] = (self.can_castle[suit_of_piece_on_origin][1], False)
 
     def board_to_list(self, board):
-        print(board)
         rows = str(board).split("\n")
         return [x.split() for x in rows]
 
@@ -376,7 +377,18 @@ class Board:
                         target = (x, y)
         return origin, target
 
+    def reset_board(self):
+        self.board_state = np.array([[8, 4, 6, 10, 12, 6, 4, 8],
+                          [2, 2, 2, 2, 2, 2, 2, 2],
+                          [0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0],
+                          [1, 1, 1, 1, 1, 1, 1, 1],
+                          [7, 3, 5, 9, 11, 5, 3, 7]])
+
     def set_board_state_from_chess_game(self, game, return_intermediates = False):
+        self.reset_board()
         prev_board = self.board_to_list(game.board())
         states = []
         while True:
@@ -395,4 +407,33 @@ class Board:
     def set_board_state_from_list(self, li):
         for x in range(8):
             for y in range(8):
-                self.board_state[x, y] = li[x][y]
+                self.board_state[x, y] = li[y][x]
+
+    def rotate_board(self, board_state):
+        new_board = np.zeros((8, 8))
+        for x in range(8):
+            for y in range(8):
+                new_board[y][x] = board_state[x][y]
+        return new_board
+
+    def make_AI_move(self, suit):
+        moves_and_origins = self.get_all_possible_moves_by_suit(suit, return_origins = True, check_for_check = True)
+        # need to get king moves
+        possible_moves = moves_and_origins[0]
+        origins = moves_and_origins[1]
+
+        possible_board_states = []
+        for i in range(len(possible_moves)):
+            prev_board_state = copy.deepcopy(self.board_state)
+            self.move_piece(origins[i], possible_moves[i])
+            possible_board_states.append(self.rotate_board(copy.deepcopy(self.board_state)))
+            self.board_state = prev_board_state
+
+        print(possible_board_states[0])
+        other_suit = 0 if suit == 1 else 1
+        print(self.model(possible_board_states))
+        ratings = [x[suit] for x in self.model(possible_board_states)]
+        print(ratings)
+        selected_move = np.argmax(ratings)
+        print(selected_move)
+        self.move_piece(origins[selected_move], possible_moves[selected_move])
