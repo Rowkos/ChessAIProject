@@ -172,4 +172,4 @@ cp_callback = custom_callback()
 tb_callback = tf.keras.callbacks.TensorBoard(log_dir = "ChessAI/PositionEvaluator01", histogram_freq = 1)
 model.fit(dataset, validation_data = val_dataset, epochs = 5, callbacks = [tb_callback, cp_callback])
 
-model.save("ScoreEvaluator00")
+model.save_weights('ChessAIcheckpoints/001')
