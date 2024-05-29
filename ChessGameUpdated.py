@@ -65,14 +65,6 @@ if __name__ == "__main__":
                       "bishop_black": 6, "rook_white": 7, "rook_black": 8,
                       "queen_white": 9, "queen_black": 10,
                       "king_white": 11, "king_black": 12}
-    start_position = [[0, 0, 9, 0, 0, 6, 4, 8],
-                      [0, 0, 0, 0, 2, 0, 2, 10],
-                      [0, 0, 0, 0, 0, 2, 12, 8],
-                      [0, 0, 0, 0, 0, 0, 0, 2],
-                      [0, 0, 0, 0, 0, 0, 0, 1],
-                      [0, 0, 0, 0, 1, 0, 0, 0],
-                      [1, 1, 1, 1, 0, 1, 1, 0],
-                      [7, 3, 5, 0, 11, 5, 3, 7]]
     board = Board(window)
     #board.set_board_state_from_list(start_position)
     #board.reset_board()

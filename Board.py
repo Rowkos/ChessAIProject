@@ -456,7 +456,7 @@ class Board:
         ratings = self.get_model_output(tf.constant(self.get_moves_reciprocally(4, suit, suit)))
         ratings = ratings["output_1"].numpy().tolist()
         target, origin = self.depth_based_search(4, suit, suit, ratings, True)
-        print(len(ratings))
+
         self.check_for_castling(origin, target)
         self.move_piece(origin, target)
         self.naive_promotion_check()
@@ -503,12 +503,12 @@ class Board:
                 try:
                     return [max(ratings)]
                 except:
-                    return [0]
+                    return [[0]]
             else:
                 try:
                     return [min(ratings)]
                 except:
-                    return [0]
+                    return [[0]]
         else:
             if player_suit == 0:
                 output = [precomputed_ratings[0][0]]
