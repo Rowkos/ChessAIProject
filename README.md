@@ -5,7 +5,7 @@ This project covers the whole life cycle of building an Artificial Intelligence 
 Data Collection
 
 To begin with, we need to find data to train our model. The most readily available source of data is the Lichess database. Data from any month will work, but this projection utilizes part of the data from the most recent April 2024 shard. Initially, this data is in the form of a .zsdt file which is converted to a .pgn file. We then cut out all the games without evaluations, which is about 95% of them. 
-Model Training 
+# Model Training 
 
 You can train a model with any architecture you want, as long as it ends in a single sigmoid neuron. 
 
