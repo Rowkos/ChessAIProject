@@ -53,7 +53,7 @@ class Board:
         self.model = build_eval_model()
         self.model(np.zeros(shape = (1, 768)))
         self.model.load_weights('ChessAICheckpoints02/001/001')
-        self.model.save("Evaluator.keras")
+        self.model.save("Evaluator")
         self.board_state = np.zeros((8, 8))
         self.piece_type_names = ["pawn", "knight", "bishop", "rook", "queen", "king"]
         self.piece_to_type_dict = {"empty": 0, "pawn": 1, "knight": 2, "bishop": 3, "rook": 4, "queen": 5, "king": 6}
