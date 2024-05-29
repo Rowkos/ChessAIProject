@@ -84,13 +84,16 @@ if __name__ == "__main__":
     promoting_square = ()
     turn = 0
     promotion_boxes = []
+    is_checkmate = False
     # I added a ghost type for representing the en pessant moves
 
     while True:
         createBoard()
-        if turn == 0:
+        if is_checkmate:
+            break
+        if turn == 1:
             board.make_AI_move(turn)
-            turn = 1
+            turn = 0
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
@@ -107,9 +110,11 @@ if __name__ == "__main__":
                         selected_square = None
                         turn = 1 if turn == 0 else 0
                         if board.is_checkmate(turn):
+                            is_checkmate = True
                             enemy_turn = 1 if turn == 0 else 0
                             print("PLAYER " + str(enemy_turn) + " WINS!")
                         if board.is_stalemate(turn):
+                            is_checkmate = True
                             print("IT'S A DRAW")
 
                     if board.get_suit(board.board_state[clicked_square]) == turn:
