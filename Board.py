@@ -52,8 +52,8 @@ class Board:
         self.window = window
         self.model = build_eval_model()
         self.model(np.zeros(shape = (1, 768)))
-        self.model.load_weights('ChessAICheckpoints/001/001')
-        self.model.save("Evaluator")
+        self.model.load_weights('ChessAICheckpoints02/001/001')
+        self.model.save("Evaluator.keras")
         self.board_state = np.zeros((8, 8))
         self.piece_type_names = ["pawn", "knight", "bishop", "rook", "queen", "king"]
         self.piece_to_type_dict = {"empty": 0, "pawn": 1, "knight": 2, "bishop": 3, "rook": 4, "queen": 5, "king": 6}
@@ -475,8 +475,8 @@ class Board:
         print(ratings)
         selected_move = np.argmax(ratings)
         print(selected_move)
-        self.move_piece(origins[selected_move], possible_moves[selected_move])
         self.check_for_castling(origins[selected_move], possible_moves[selected_move])
+        self.move_piece(origins[selected_move], possible_moves[selected_move])
 
     def depth_based_search(self, depth, current_suit, player_suit, best_rating = None):
         if depth > 1:
@@ -497,7 +497,7 @@ class Board:
                 return [min(ratings)]
         else:
             state = tf.constant([self.get_bitboard(self.rotate_board(copy.deepcopy(self.board_state)))])
-            if current_suit == 0:
+            if player_suit == 0:
                 return [self.model(state).numpy().tolist()[0][0]]
             else:
                 return [1 - self.model(state).numpy().tolist()[0][0]]
