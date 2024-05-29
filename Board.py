@@ -50,10 +50,8 @@ def drawSquare(color, position):
 class Board:
     def __init__(self, window):
         self.window = window
-        self.model = build_eval_model()
+        self.model = tf.keras.layers.TFSMLayer("Evaluator", call_endpoint='serving_default')
         self.model(np.zeros(shape = (1, 768)))
-        self.model.load_weights('ChessAICheckpoints02/001/001')
-        self.model.save("Evaluator")
         self.board_state = np.zeros((8, 8))
         self.piece_type_names = ["pawn", "knight", "bishop", "rook", "queen", "king"]
         self.piece_to_type_dict = {"empty": 0, "pawn": 1, "knight": 2, "bishop": 3, "rook": 4, "queen": 5, "king": 6}
@@ -451,34 +449,41 @@ class Board:
                 new_board[y][x] = board_state[x][y]
         return new_board
 
+    def get_model_output(self, input_data):
+        return self.model(input_data)
+
     def make_AI_move(self, suit):
-        # let's try building a depth based search to go more moves into the future
-        moves_and_origins = self.get_all_possible_moves_by_suit(suit, return_origins = True, check_for_check = True, get_king_moves = True)
-        # need to get king moves
-        possible_moves = moves_and_origins[0]
-        origins = moves_and_origins[1]
+        ratings = self.get_model_output(tf.constant(self.get_moves_reciprocally(4, suit, suit)))
+        ratings = ratings["output_1"].numpy().tolist()
+        target, origin = self.depth_based_search(4, suit, suit, ratings, True)
+        print(len(ratings))
+        self.check_for_castling(origin, target)
+        self.move_piece(origin, target)
+        self.naive_promotion_check()
 
-        ratings = []
-        other_suit = 1 if suit == 0 else 0
-        for i in range(len(possible_moves)):
-            prev_board_state = copy.deepcopy(self.board_state)
-            prev_castling = copy.deepcopy(self.can_castle)
-            self.check_for_castling(origins[i], possible_moves[i])
-            self.move_piece(origins[i], possible_moves[i])
-            ratings.append(self.depth_based_search(2, other_suit, suit))
+    def get_moves_reciprocally(self, depth, current_suit, player_suit):
+        if depth > 1:
+            possible_positions = []
+            moves = self.get_all_possible_moves_by_suit(current_suit, return_origins=True, check_for_check=True,
+                                                        get_king_moves=True)
+            alt_suit = 0 if current_suit == 1 else 1
+            for i in range(len(moves[0])):
+                prev_board_state = copy.deepcopy(self.board_state)
+                prev_castling = copy.deepcopy(self.can_castle)
+                self.check_for_castling(moves[1][i], moves[0][i])
+                self.move_piece(moves[1][i], moves[0][i])
+                self.naive_promotion_check()
+                possible_positions += self.get_moves_reciprocally(depth - 1, alt_suit, player_suit)
+                self.board_state = prev_board_state
+                self.can_castle = prev_castling
+            return possible_positions
 
-            # state = tf.constant([self.get_bitboard(copy.deepcopy(self.board_state))])
-            # ratings.append(self.model(state))
-            self.board_state = prev_board_state
-            self.can_castle = prev_castling
+        else:
+            state = np.array([self.get_bitboard(self.rotate_board(copy.deepcopy(self.board_state)))])
+            state = state.flatten()
+            return [state]
 
-        print(ratings)
-        selected_move = np.argmax(ratings)
-        print(selected_move)
-        self.check_for_castling(origins[selected_move], possible_moves[selected_move])
-        self.move_piece(origins[selected_move], possible_moves[selected_move])
-
-    def depth_based_search(self, depth, current_suit, player_suit, best_rating = None):
+    def depth_based_search(self, depth, current_suit, player_suit, precomputed_ratings, start_depth):
         if depth > 1:
             moves = self.get_all_possible_moves_by_suit(current_suit, return_origins = True, check_for_check = True, get_king_moves = True)
             ratings = []
@@ -488,19 +493,31 @@ class Board:
                 prev_castling = copy.deepcopy(self.can_castle)
                 self.check_for_castling(moves[1][i], moves[0][i])
                 self.move_piece(moves[1][i], moves[0][i])
-                ratings += self.depth_based_search(depth - 1, alt_suit, player_suit)
+                self.naive_promotion_check()
+                ratings += self.depth_based_search(depth - 1, alt_suit, player_suit, precomputed_ratings, False)
                 self.board_state = prev_board_state
                 self.can_castle = prev_castling
+            if start_depth:
+                return moves[0][np.argmax(ratings)], moves[1][np.argmax(ratings)]
             if current_suit == player_suit:
-                return [max(ratings)]
+                try:
+                    return [max(ratings)]
+                except:
+                    return [0]
             else:
-                return [min(ratings)]
+                try:
+                    return [min(ratings)]
+                except:
+                    return [0]
         else:
-            state = tf.constant([self.get_bitboard(self.rotate_board(copy.deepcopy(self.board_state)))])
             if player_suit == 0:
-                return [self.model(state).numpy().tolist()[0][0]]
+                output = [precomputed_ratings[0][0]]
+                precomputed_ratings.pop(0)
+                return [output]
             else:
-                return [1 - self.model(state).numpy().tolist()[0][0]]
+                output = [1 - precomputed_ratings[0][0]]
+                precomputed_ratings.pop(0)
+                return [output]
 
     def get_bitboard(self, state):
         bitboards = np.zeros((12, 8, 8))
@@ -509,3 +526,10 @@ class Board:
                 if state[x, y] != 0:
                     bitboards[int(state[x, y]) - 1, x, y] = 1
         return bitboards
+
+    def naive_promotion_check(self):
+        for row in [0, 7]:
+            for col in range(8):
+                if self.get_piece_type(self.board_state[col, row]) == 1:
+                    self.board_state[col, row] = self.get_piece_id("queen", self.get_suit(self.board_state[col, row]))
+

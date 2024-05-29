@@ -91,7 +91,7 @@ if __name__ == "__main__":
         createBoard()
         if is_checkmate:
             break
-        if turn == 1:
+        if turn == 1 and not is_promoting:
             board.make_AI_move(turn)
             turn = 0
         for event in pygame.event.get():
